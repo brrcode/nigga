@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>W Calendar</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        .calendar-container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .month-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            background-color: white;
+            transition: background-color 0.2s;
+        }
+
+        .calendar-day:hover {
+            background-color: #f8f9fa;
+        }
+
+        .W { background-color: #90EE90 !important; }
+        .L { background-color: #FF7276 !important; }
+        .Mid { background-color: #D3D3D3 !important; }
+
+        button {
+            padding: 8px 16px;
+            margin: 0 5px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .month-year {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="calendar-container">
+        <div class="month-header">
+            <button id="prevMonth">← Previous</button>
+            <div class="month-year" id="currentMonthYear"></div>
+            <button id="nextMonth">Next →</button>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+        <div style="text-align: center; margin-top: 20px;">
+            <button onclick="resetMonth()">Reset Month</button>
+        </div>
+    </div>
+
+    <script>
+        let currentDate = new Date();
+        let states = {}; // Store day states: { 'YYYY-MM': { day: state } }
+
+        function generateCalendar(date) {
+            const calendarGrid = document.getElementById('calendarGrid');
+            calendarGrid.innerHTML = '';
+            
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            const monthKey = `${year}-${month}`;
+            
+            document.getElementById('currentMonthYear').textContent = 
+                new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(date);
+
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const firstDay = new Date(year, month, 1).getDay();
+
+            // Create empty cells for days before the first day of the month
+            for (let i = 0; i < firstDay; i++) {
+                calendarGrid.appendChild(createEmptyDay());
+            }
+
+            // Create day buttons
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayElement = document.createElement('button');
+                dayElement.className = 'calendar-day';
+                dayElement.textContent = day;
+                
+                // Check saved state
+                const savedState = (states[monthKey] || {})[day];
+                if (savedState) dayElement.classList.add(savedState);
+
+                dayElement.onclick = () => toggleDayState(dayElement, day, monthKey);
+                calendarGrid.appendChild(dayElement);
+            }
+        }
+
+        function createEmptyDay() {
+            const div = document.createElement('div');
+            div.className = 'calendar-day';
+            div.style.visibility = 'hidden';
+            return div;
+        }
+
+        function toggleDayState(dayElement, day, monthKey) {
+            const statesOrder = ['W', 'L', 'Mid', null];
+            const currentState = dayElement.className.match(/W|L|Mid/)?.[0];
+            const nextState = statesOrder[(statesOrder.indexOf(currentState) + 1) % 4];
+
+            // Remove existing state classes
+            dayElement.className = 'calendar-day';
+            
+            if (nextState) {
+                dayElement.classList.add(nextState);
+                if (!states[monthKey]) states[monthKey] = {};
+                states[monthKey][day] = nextState;
+            } else {
+                if (states[monthKey]) delete states[monthKey][day];
+            }
+            
+            localStorage.setItem('calendarStates', JSON.stringify(states));
+        }
+
+        function changeMonth(offset) {
+            currentDate.setMonth(currentDate.getMonth() + offset);
+            generateCalendar(currentDate);
+        }
+
+        function resetMonth() {
+            const monthKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}`;
+            if (states[monthKey]) {
+                delete states[monthKey];
+                localStorage.setItem('calendarStates', JSON.stringify(states));
+                generateCalendar(currentDate);
+            }
+        }
+
+        // Initialize
+        document.getElementById('prevMonth').onclick = () => changeMonth(-1);
+        document.getElementById('nextMonth').onclick = () => changeMonth(1);
+        
+        // Load saved states
+        const savedStates = localStorage.getItem('calendarStates');
+        if (savedStates) states = JSON.parse(savedStates);
+        
+        generateCalendar(currentDate);
+    </script>
+</body>
+</html>
